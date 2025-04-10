@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Automatic Pill Dispenser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0; padding: 0;
+      position: relative;
+      min-height: 100vh;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    /* Background video styling */
+    #bgVideo {
+      position: fixed;
+      top: 0;
+      left: 0;
+      min-width: 100vw;
+      min-height: 100vh;
+      object-fit: cover;
+      z-index: -2;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: -1;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      padding: 30px 40px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+      margin: 30px auto;
+      transition: all 0.3s ease;
+    }
+
+    h2, h3 { color: #ffcc00; margin-bottom: 12px; }
+    p { margin: 6px 0; }
+    label { display: block; margin-top: 15px; font-weight: 600; }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+
+    button {
+      background: #ffcc00;
+      color: black;
+      padding: 12px 20px;
+      margin: 10px 5px 0 0;
+      border-radius: 8px;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: #e6b800;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+      background-color: rgba(255, 255, 255, 0.9);
+      color: black;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #ffcc00;
+      color: black;
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        padding: 20px;
+      }
+      button {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <video autoplay muted loop playsinline id="bgVideo">
+    <source src="elderlyvideo.mp4" type="video/mp4">
+    Your browser does not support HTML5 video.
+  </video>
+
+  <div class="overlay"></div>
+
+  <div class="container" id="languagePage">
+    <h2 id="selectLangTitle">🌐 Select Your Language</h2>
+    <select id="languageSelect">
+      <option value="">-- Choose a language --</option>
+      <option value="en">English</option>
+      <option value="hi">Hindi</option>
+      <option value="es">Spanish</option>
+      <option value="ta">Tamil</option>
+    </select>
+    <button onclick="confirmLanguage()">Continue</button>
+  </div>
+
+  <div class="container hidden" id="homePage">
+    <h2 id="welcomeTitle">💊 Welcome to the Automatic Pill Dispenser 💊</h2>
+    <p id="feature1">✔ Set automatic pill reminders</p>
+    <p id="feature2">✔ Never forget your medications</p>
+    <p id="feature3">✔ Get notified when it's time for a refill</p>
+    <button onclick="showMainPage()" id="getStartedBtn">Get Started</button>
+  </div>
+
+  <div class="container hidden" id="mainPage">
+    <h2 id="mainTitle">💊 Automatic Pill Dispenser 💊</h2>
+
+    <label for="name" id="nameLabel">Name:</label>
+    <input type="text" id="name" placeholder="Enter your name" required>
+
+    <label for="age" id="ageLabel">Age:</label>
+    <input type="number" id="age" placeholder="Enter your age" required>
+
+    <label for="time" id="timeLabel">Set Dispensing Time:</label>
+    <input type="time" id="time" required>
+    <button onclick="setTime()" id="setTimeBtn">Set Time</button>
+
+    <h3 id="scheduledTimeLabel">🕒 Scheduled Time: <span id="scheduledTime">None</span></h3>
+
+    <button onclick="dispensePill()" id="dispenseBtn">🚀 Dispense Now</button>
+
+    <h3 id="refillReminderTitle">🔔 Pill Refill Reminder</h3>
+    <label for="pillCount" id="pillCountLabel">Enter remaining pills:</label>
+    <input type="number" id="pillCount" placeholder="Enter number of pills" required>
+    <button onclick="setRefillReminder()" id="refillBtn">Set Reminder</button>
+    <h3 id="pillsLeftLabel">📦 Pills Left: <span id="remainingPills">Not Set</span></h3>
+
+    <h3 id="logTitle">📜 Pill Log Transactions</h3>
+    <table>
+      <thead>
+        <tr>
+          <th id="logDate">Date & Time</th>
+          <th id="logAction">Action</th>
+        </tr>
+      </thead>
+      <tbody id="pillLog"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let scheduledTime = null;
+    let remainingPills = 0;
+    let currentLang = 'en';
+
+    const translations = {
+      en: {
+        selectLangTitle: "🌐 Select Your Language",
+        welcomeTitle: "💊 Welcome to the Automatic Pill Dispenser 💊",
+        feature1: "✔ Set automatic pill reminders",
+        feature2: "✔ Never forget your medications",
+        feature3: "✔ Get notified when it's time for a refill",
+        getStartedBtn: "Get Started",
+        mainTitle: "💊 Automatic Pill Dispenser 💊",
+        nameLabel: "Name:",
+        ageLabel: "Age:",
+        timeLabel: "Set Dispensing Time:",
+        setTimeBtn: "Set Time",
+        scheduledTimeLabel: "🕒 Scheduled Time:",
+        dispenseBtn: "🚀 Dispense Now",
+        refillReminderTitle: "🔔 Pill Refill Reminder",
+        pillCountLabel: "Enter remaining pills:",
+        refillBtn: "Set Reminder",
+        pillsLeftLabel: "📦 Pills Left:",
+        logTitle: "📜 Pill Log Transactions",
+        logDate: "Date & Time",
+        logAction: "Action",
+      },
+      hi: {
+        selectLangTitle: "🌐 अपनी भाषा चुनें",
+        welcomeTitle: "💊 ऑटोमैटिक पिल डिस्पेंसर में आपका स्वागत है 💊",
+        feature1: "✔ स्वचालित गोली रिमाइंडर सेट करें",
+        feature2: "✔ अपनी दवाएं भूलें नहीं",
+        feature3: "✔ जब रिफिल का समय हो तो सूचित हों",
+        getStartedBtn: "शुरू करें",
+        mainTitle: "💊 स्वचालित पिल डिस्पेंसर 💊",
+        nameLabel: "नाम:",
+        ageLabel: "उम्र:",
+        timeLabel: "गोली वितरण समय सेट करें:",
+        setTimeBtn: "समय सेट करें",
+        scheduledTimeLabel: "🕒 निर्धारित समय:",
+        dispenseBtn: "🚀 अभी गोली दें",
+        refillReminderTitle: "🔔 पिल रिफिल रिमाइंडर",
+        pillCountLabel: "शेष गोलियां दर्ज करें:",
+        refillBtn: "रिमाइंडर सेट करें",
+        pillsLeftLabel: "📦 शेष गोलियां:",
+        logTitle: "📜 पिल लॉग रिकॉर्ड",
+        logDate: "दिनांक और समय",
+        logAction: "क्रिया",
+      },
+      es: {
+        selectLangTitle: "🌐 Selecciona tu idioma",
+        welcomeTitle: "💊 Bienvenido al Dispensador Automático de Pastillas 💊",
+        feature1: "✔ Configura recordatorios automáticos de pastillas",
+        feature2: "✔ Nunca olvides tus medicamentos",
+        feature3: "✔ Recibe notificaciones cuando necesites recargar",
+        getStartedBtn: "Comenzar",
+        mainTitle: "💊 Dispensador Automático de Pastillas 💊",
+        nameLabel: "Nombre:",
+        ageLabel: "Edad:",
+        timeLabel: "Configurar hora de dispensado:",
+        setTimeBtn: "Establecer hora",
+        scheduledTimeLabel: "🕒 Hora programada:",
+        dispenseBtn: "🚀 Dispensar ahora",
+        refillReminderTitle: "🔔 Recordatorio de recarga de pastillas",
+        pillCountLabel: "Ingresa pastillas restantes:",
+        refillBtn: "Establecer recordatorio",
+        pillsLeftLabel: "📦 Pastillas restantes:",
+        logTitle: "📜 Registro de pastillas",
+        logDate: "Fecha y hora",
+        logAction: "Acción",
+      },
+      ta: {
+        selectLangTitle: "🌐 உங்கள் மொழியை தேர்வுசெய்யவும்",
+        welcomeTitle: "💊 தானியங்கி மாத்திரை விநியோகிக்கும் கருவிக்கு வரவேற்கிறோம் 💊",
+        feature1: "✔ தானாக மாத்திரை நினைவூட்டலை அமைக்கவும்",
+        feature2: "✔ உங்கள் மருந்துகளை மறக்காதீர்கள்",
+        feature3: "✔ மீண்டும் நிரப்ப வேண்டிய நேரத்தில் அறிவிக்கப்படும்",
+        getStartedBtn: "தொடங்கவும்",
+        mainTitle: "💊 தானியங்கி மாத்திரை விநியோகிப்பு 💊",
+        nameLabel: "பெயர்:",
+        ageLabel: "வயது:",
+        timeLabel: "விநியோக நேரத்தை அமைக்கவும்:",
+        setTimeBtn: "நேரம் அமைக்கவும்",
+        scheduledTimeLabel: "🕒 திட்டமிடப்பட்ட நேரம்:",
+        dispenseBtn: "🚀 இப்போது விநியோகிக்கவும்",
+        refillReminderTitle: "🔔 மாத்திரை மீள்பூரிப்பு நினைவூட்டல்",
+        pillCountLabel: "மீதமுள்ள மாத்திரைகளை உள்ளிடவும்:",
+        refillBtn: "நினைவூட்டலை அமைக்கவும்",
+        pillsLeftLabel: "📦 மீதமுள்ள மாத்திரைகள்:",
+        logTitle: "📜 மாத்திரை பதிவு",
+        logDate: "தேதி மற்றும் நேரம்",
+        logAction: "நடவடிக்கை",
+      }
+    };
+
+    function translateUI(lang) {
+      currentLang = lang;
+      const t = translations[lang];
+      for (const key in t) {
+        const el = document.getElementById(key);
+        if (el) el.innerText = t[key];
+      }
+    }
+
+    function confirmLanguage() {
+      const lang = document.getElementById("languageSelect").value;
+      if (!lang) {
+        alert("🌍 Please select a language to continue!");
+        return;
+      }
+      translateUI(lang);
+      document.getElementById("languagePage").classList.add("hidden");
+      document.getElementById("homePage").classList.remove("hidden");
+    }
+
+    function showMainPage() {
+      document.getElementById("homePage").classList.add("hidden");
+      document.getElementById("mainPage").classList.remove("hidden");
+    }
+
+    function setTime() {
+      let time = document.getElementById("time").value;
+      if (!time) {
+        alert("⏰ Please select a valid time!");
+        return;
+      }
+      scheduledTime = time;
+      document.getElementById("scheduledTime").innerText = time;
+    }
+
+    function checkTime() {
+      if (!scheduledTime) return;
+      let now = new Date();
+      let currentTime = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+      if (currentTime === scheduledTime) {
+        dispensePill();
+        scheduledTime = null;
+      }
+    }
+
+    setInterval(checkTime, 60000);
+
+    function dispensePill() {
+      if (remainingPills > 0) {
+        remainingPills--;
+        document.getElementById("remainingPills").innerText = remainingPills;
+        alert("💊 Pill dispensed successfully!");
+        addLogEntry("Pill Dispensed");
+        if (remainingPills === 0) {
+          alert("⚠️ Pills are over! Please refill.");
+        }
+      } else {
+        alert("⚠️ No pills left! Please refill.");
+      }
+    }
+
+    function setRefillReminder() {
+      remainingPills = parseInt(document.getElementById("pillCount").value) || 0;
+      document.getElementById("remainingPills").innerText = remainingPills;
+      alert("🔔 Reminder set! You have " + remainingPills + " pills left.");
+      addLogEntry("Refill Reminder Set: " + remainingPills + " pills left");
+    }
+
+    function addLogEntry(action) {
+      let table = document.getElementById("pillLog");
+      let row = table.insertRow(0);
+      let cell1 = row.insertCell(0);
+      let cell2 = row.insertCell(1);
+      let now = new Date().toLocaleString();
+      cell1.innerHTML = now;
+      cell2.innerHTML = action;
+    }
+  </script>
+</body>
+</html>
